@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+
+    <style media="screen">
+
+      body {
+        padding: 15px;
+      }
+
+      .fecha {
+        text-align: center;
+      }
+
+    </style>
+
+    <title>Calendario</title>
+  </head>
+  <body>
+
+    <div id="login">
+      <h2>Iniciar sesion</h2>
+      <input type="text" id="username" value="usuario">
+      <input type="password" id="password" value="1234">
+      <button id="iniciar-sesion">Iniciar sesion</button>
+    </div>
+
+    <div id="app" style="display:none;">
+      <div class="creacion">
+        <h1>Proponer día</h1>
+        <input id="fecha" type="date" name="" placeholder="">
+        <br>
+        <input id="lugar" type="text" name="" placeholder="Lugar">
+        <br>
+        <button id="crear" type="button" name="button">Crear</button>
+      </div>
+
+      <hr>
+
+      <div class="fechas row"></div>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
+    <!-- CODIGO APP -->
+    <script type="text/javascript">
+
+      function iniciarSesion () {
+        $('button#iniciar-sesion').click(function () {
+          var username = $('input#username').val();
+          var password = $('input#password').val();
+          $.ajax({
+            url: 'http://192.168.100.63:1337/login',
+            type: 'POST',
+            data: {
+              username: username,
+              password: password
+            }
+          })
+          .done(iniciarAplicacion)
+          .fail(function () {
+            alert('Login incorrecto');
+          })
+        });
+      }
+
+      function iniciarAplicacion () {
+
+        $('div#login').hide();
+        $('div#app').show();
+
+        var $divFechas = $('.fechas');
+
+        $('#crear').click(function () {
+          var fecha = $('#fecha').val();
+          var lugar = $('#lugar').val();
+          if (!fecha || !lugar) { return alert('Selecciona una fecha valida!'); }
+          var datos = {
+            lugar: lugar,
+            fecha: fecha
+          }
+          $.post('http://192.168.100.63:1337/fecha', datos, function (fecha) {
+            var html = '<div class="fecha col-md-2" data-id="' + fecha.id + '"><small class="eliminar-fecha" style="cursor: pointer;float: right;">x</small><h3>' + fecha.fecha + '</h3><h3>' + fecha.lugar + '</h3><button class="votar" type="button" name="button">+ 1</button><button class="eliminar-voto" type="button" name="button">- 1</button><h2 data-votos="0">0 votos</h2></div>';
+            $divFechas.append(html);
+            $('#fecha').val('');
+            $('#lugar').val('');
+          });
+        });
+
+        // ALTERNATIVA 1
+        // <button class="votos">+1</button>
+        // <h2 data-votos="0">0 votos</h2>
+        $(document).on('click', '.votar', function (event) {
+          var button = $(event.currentTarget);
+          button.attr('disabled', true);
+          var id = button.parent().data('id');
+          $.ajax({
+            url: 'http://192.168.100.63:1337/fecha/sumar/' + id,
+            type: 'PUT',
+            data: {}
+          }).done(function () {
+            var h2 = button.next().next('h2');
+            var votosActuales = parseInt(h2.data('votos'));
+            var nuevosVotos = votosActuales + 1;
+            h2.text(nuevosVotos + ' votos');
+            h2.data('votos', nuevosVotos);
+          });
+        });
+
+        $(document).on('click', '.eliminar-voto', function (event) {
+          var h2 = $(event.currentTarget).next('h2');
+          var button = $(event.currentTarget);
+          var votosActuales = parseInt(h2.data('votos'));
+          if (votosActuales <= 0 || !button.prev('button').attr('disabled')) {
+            return;
+          }
+          var id = button.parent().data('id');
+          $.ajax({
+            url: 'http://192.168.100.63:1337/fecha/restar/' + id,
+            type: 'PUT',
+            data: {}
+          }).done(function () {
+            var nuevosVotos = votosActuales - 1;
+            h2.text(nuevosVotos + ' votos');
+            h2.data('votos', nuevosVotos);
+            button.prev('button').attr('disabled', false);
+          });
+        });
+
+        $(document).on('click', '.eliminar-fecha', function (event) {
+          var div = $(event.currentTarget).parent('div');
+          var id = div.data('id');
+          $.ajax({
+            url: 'http://192.168.100.63:1337/fecha/' + id,
+            type: 'DELETE',
+            data: {}
+          }).done(function () {
+            div.remove();
+          });
+        });
+
+        $.get('http://192.168.100.63:1337/fechas', function (fechas) {
+          fechas.forEach(function (fecha) {
+            var html = '<div class="fecha col-md-2" data-id="' + fecha.id + '"><small class="eliminar-fecha" style="cursor: pointer;float: right;">x</small><h3>' + fecha.fecha + '</h3><h3>' + fecha.lugar + '</h3><button class="votar" type="button" name="button">+ 1</button><button class="eliminar-voto" type="button" name="button">- 1</button><h2 data-votos="' + fecha.votos + '">' + fecha.votos + ' votos</h2></div>';
+            $('.fechas').append(html);
+          });
+        });
+      }
+
+      iniciarSesion();
+
+    </script>
+  </body>
+</html>
