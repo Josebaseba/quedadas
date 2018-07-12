@@ -26,9 +26,11 @@
 
     <div id="login">
       <h2>Iniciar sesion</h2>
-      <input type="text" id="username" value="usuario">
-      <input type="password" id="password" value="1234">
+      <input type="text" id="username" value="joseba">
+      <input type="password" id="password" value="hola">
       <button id="iniciar-sesion">Iniciar sesion</button>
+      <br>
+      <a href="crearUsuario.html">No tienes usuario? Haz click aquí</a>
     </div>
 
     <div id="app" style="display:none;">
@@ -59,7 +61,7 @@
           var username = $('input#username').val();
           var password = $('input#password').val();
           $.ajax({
-            url: 'http://192.168.100.63:1337/login',
+            url: 'http://192.168.100.50:1337/login',
             type: 'POST',
             data: {
               username: username,
@@ -73,7 +75,9 @@
         });
       }
 
-      function iniciarAplicacion () {
+      function iniciarAplicacion (usuario) {
+
+        var USUARIO_ID = usuario.id;
 
         $('div#login').hide();
         $('div#app').show();
@@ -86,9 +90,10 @@
           if (!fecha || !lugar) { return alert('Selecciona una fecha valida!'); }
           var datos = {
             lugar: lugar,
-            fecha: fecha
+            fecha: fecha,
+            usuario: USUARIO_ID
           }
-          $.post('http://192.168.100.63:1337/fecha', datos, function (fecha) {
+          $.post('http://192.168.100.50:1337/fecha', datos, function (fecha) {
             var html = '<div class="fecha col-md-2" data-id="' + fecha.id + '"><small class="eliminar-fecha" style="cursor: pointer;float: right;">x</small><h3>' + fecha.fecha + '</h3><h3>' + fecha.lugar + '</h3><button class="votar" type="button" name="button">+ 1</button><button class="eliminar-voto" type="button" name="button">- 1</button><h2 data-votos="0">0 votos</h2></div>';
             $divFechas.append(html);
             $('#fecha').val('');
@@ -104,9 +109,11 @@
           button.attr('disabled', true);
           var id = button.parent().data('id');
           $.ajax({
-            url: 'http://192.168.100.63:1337/fecha/sumar/' + id,
+            url: 'http://192.168.100.50:1337/fecha/sumar/' + id,
             type: 'PUT',
-            data: {}
+            data: {
+              usuario: USUARIO_ID
+            }
           }).done(function () {
             var h2 = button.next().next('h2');
             var votosActuales = parseInt(h2.data('votos'));
@@ -125,9 +132,11 @@
           }
           var id = button.parent().data('id');
           $.ajax({
-            url: 'http://192.168.100.63:1337/fecha/restar/' + id,
+            url: 'http://192.168.100.50:1337/fecha/restar/' + id,
             type: 'PUT',
-            data: {}
+            data: {
+              usuario: USUARIO_ID
+            }
           }).done(function () {
             var nuevosVotos = votosActuales - 1;
             h2.text(nuevosVotos + ' votos');
@@ -140,18 +149,20 @@
           var div = $(event.currentTarget).parent('div');
           var id = div.data('id');
           $.ajax({
-            url: 'http://192.168.100.63:1337/fecha/' + id,
+            url: 'http://192.168.100.50:1337/fecha/' + id,
             type: 'DELETE',
-            data: {}
+            data: {
+              usuario: USUARIO_ID
+            }
           }).done(function () {
             div.remove();
           });
         });
 
-        $.get('http://192.168.100.63:1337/fechas', function (fechas) {
+        $.get('http://192.168.100.50:1337/fechas', function (fechas) {
           fechas.forEach(function (fecha) {
-            var html = '<div class="fecha col-md-2" data-id="' + fecha.id + '"><small class="eliminar-fecha" style="cursor: pointer;float: right;">x</small><h3>' + fecha.fecha + '</h3><h3>' + fecha.lugar + '</h3><button class="votar" type="button" name="button">+ 1</button><button class="eliminar-voto" type="button" name="button">- 1</button><h2 data-votos="' + fecha.votos + '">' + fecha.votos + ' votos</h2></div>';
-            $('.fechas').append(html);
+            var html = '<div class="fecha col-md-2" data-id="' + fecha.id + '">' + (fecha.creador === USUARIO_ID ? '<small class="eliminar-fecha" style="cursor: pointer;float: right;">x</small>' : '') + '<h3>' + fecha.fecha + '</h3><h3>' + fecha.lugar + '</h3><button class="votar" type="button" name="button">+ 1</button><button class="eliminar-voto" type="button" name="button">- 1</button><h2 data-votos="' + fecha.votos + '">' + fecha.votos + ' votos</h2></div>';
+            $divFechas.append(html);
           });
         });
       }
